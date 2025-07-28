@@ -212,6 +212,11 @@
                         <property name="orientation">horizontal</property>
                         <property name="spacing">5</property>
                         <child>
+                          <object class="GtkButton" id="previous_track">
+                            <property name="label">⏮</property>
+                          </object>
+                        </child>
+                        <child>
                           <object class="GtkButton" id="play_button">
                             <property name="label">▶️</property>
                           </object>
@@ -219,6 +224,24 @@
                         <child>
                           <object class="GtkButton" id="stop_button">
                             <property name="label">⏹️ </property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="next_track">
+                            <property name="label">⏭</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkDropDown">
+                            <property name="model">
+                              <object class="GtkStringList">
+                                <items>
+                                  <item>⮔</item>
+                                  <item>Random</item>
+                                  <item>Forward</item>
+                                </items>
+                              </object>
+                            </property>
                           </object>
                         </child>
                         <child>

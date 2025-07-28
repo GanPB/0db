@@ -31,7 +31,8 @@ public:
   void play();
   void stop();
   void clear() {}
-
+  void previous();
+  void next();
   void on_changed_volume();
   void add_track(const std::string &path);
   struct player {

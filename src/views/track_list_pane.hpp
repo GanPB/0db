@@ -24,8 +24,10 @@ public:
 
   Gtk::Button *play_button;
   Gtk::Button *stop_button;
+  Gtk::Button *previous_button;
+  Gtk::Button *next_button;
   Gtk::Label *playing_button;
-
+  
   void update();
 
 private:

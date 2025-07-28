@@ -14,6 +14,8 @@ track_list_pane::track_list_pane(const Glib::RefPtr<Gtk::Builder> &builder) {
   track_list_view = builder->get_widget<Gtk::ColumnView>("track_list_view");
   // model of added tracks
   track_model = Gio::ListStore<track_item>::create();
+  //bool ordenable = false;
+  //track_list_view->set_reorderable(ordenable);
 
   if (track_list_view) {
     Glib::RefPtr<Gtk::SingleSelection> selection_model =
@@ -29,6 +31,12 @@ track_list_pane::track_list_pane(const Glib::RefPtr<Gtk::Builder> &builder) {
   stop_button = builder->get_widget<Gtk::Button>("stop_button");
   stop_button->signal_clicked().connect(
       sigc::mem_fun(*controller, &track_controller::stop));
+  previous_button = builder->get_widget<Gtk::Button>("previous_track");
+  previous_button->signal_clicked().connect(
+      sigc::mem_fun(*controller, &track_controller::previous));
+  next_button = builder->get_widget<Gtk::Button>("next_track");
+  next_button->signal_clicked().connect(
+      sigc::mem_fun(*controller, &track_controller::next));
 
   slider = builder->get_widget<Gtk::Scale>("volume_slider");
   slider->set_range(0, 1);
@@ -69,7 +77,7 @@ bool track_list_pane::progress_bar_pos_timeout() {
   gst_element_query_position(controller->elements.pipeline, GST_FORMAT_TIME,
                              &current);
   // PROGRESS BAR POSITION
-  if (controller->column_path.size()>0 ) {
+  if (controller->column_path.size() > 0) {
     progress_bar->set_fraction(current);
     progress_bar->set_fraction(
         (float(current) / (float(controller->elements.duration))));

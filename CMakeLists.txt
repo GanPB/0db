@@ -14,7 +14,7 @@ pkg_check_modules(GST
 )
 pkg_check_modules(TAG taglib REQUIRED)
 pkg_check_modules(SQLITE sqlite3 REQUIRED)
-
+pkg_check_modules(GTKMM gtkmm-4.0 REQUIRED)
 # Install 0db gstreamermm fork, current main branch is outdated
 # gstreamermm uses autotools as their build system
 set(GSTREAMERMM_PREFIX ${CMAKE_BINARY_DIR}/lib/gstreamermm)

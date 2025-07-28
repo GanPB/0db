@@ -32,7 +32,7 @@ track_controller::track_controller(track_list_pane *track_list_view)
   elements.seek_enabled = false;
   elements.seek_done = false;
   elements.duration = GST_CLOCK_TIME_NONE;
-  // creating elements
+  // creating elements xdd
   elements.source = gst_element_factory_make("uridecodebin", "audio_src");
   elements.convert = gst_element_factory_make("audioconvert", "audio_convert");
   elements.resample =
@@ -95,6 +95,7 @@ void track_controller::handle_message(player *data, GstMessage *msg) {
   case GST_MESSAGE_EOS:
     g_print("\nEnd-Of-Stream reached.\n");
     data->terminate = TRUE;
+
     break;
   case GST_MESSAGE_DURATION:
     /* The duration has changed, mark the current one as invalid */
@@ -172,13 +173,10 @@ void track_controller::on_changed_volume() {
                nullptr);
 }
 void track_controller::update_playing_buttons() {
-
   if (elements.playing) {
     track_list_view->play_button->set_label("⏸︎");
-
   } else
     track_list_view->play_button->set_label("▶");
-
   track_list_view->update();
 }
 void track_controller::play() {
@@ -206,25 +204,18 @@ void track_controller::play() {
   }
   playing_state_label();
   update_playing_buttons();
-
   stopped_state = false;
 }
 void track_controller::stop() {
-
   gst_element_set_state(elements.pipeline, GST_STATE_NULL);
-
   stopped_state = true;
   elements.playing = false;
-
   track_list_view->update();
   playing_state_label();
-
   update_playing_buttons();
 }
 void track_controller::add_track(const std::string &path) {
-  // gst_element_set_state(elements.pipeline, GST_STATE_PLAYING);
   TagLib::FileRef file_add(path.c_str());
-  // std::string time =
   // std::to_string(file_add.file()->audioProperties()->lengthInSeconds());
   Glib::ustring artist = file_add.tag()->artist().to8Bit();
   Glib::ustring song_name = file_add.tag()->title().to8Bit();
@@ -233,15 +224,12 @@ void track_controller::add_track(const std::string &path) {
 
   std::string new_file_path = "file://" + path;
   g_object_set(elements.source, "uri", new_file_path.c_str(), NULL);
-
   //  DURATION
-
   std::string duration_mins = std::format(
       "{:02}", (file_add.file()->audioProperties()->lengthInSeconds() / 60));
   std::string duration_secs = std::format(
       "{:02}", (file_add.file()->audioProperties()->lengthInSeconds() % 60));
 
-  // update_playing_buttons();
   // setting the track display info
   track_list_view->track_model->append(
       track_item::create("", track_id, artist, album, song_name,
@@ -281,6 +269,7 @@ void track_controller::playing_state_label() {
 
   // PROBLEM WITH PLAY AND STOP BUTTON
   // NOT SOLVED 25/07
+  // SOLVED
   //////////////////////////////////////////////////////////////////////////////////////////
   for (int i = 0; i < column_path.size(); i++) {
     track_list_view->track_model->get_item(i)->playing = "";
@@ -299,29 +288,45 @@ void track_controller::playing_state_label() {
 
     std::cout << "No File Selected" << std::endl;
   }
-  /*
-    if (track_list_view->track_model->get_item(0)) {
-      track_list_view->update();
-      if (!elements.playing && !stopped_state) {
-        // PAUSED
-        track_list_view->track_model->get_item(st->get_selected())->playing =
-    "▶"; track_list_view->update();
-      }
-      if (elements.playing && !stopped_state) {
-        // PLAYING
-        track_list_view->track_model->get_item(st->get_selected())->playing =
-    "⏸︎"; track_list_view->update();
-      }
-      if (!elements.playing && stopped_state) {
-        // STOPPED
-        track_list_view->track_model->get_item(st->get_selected())->playing =
-    "▶"; track_list_view->update(); } else { std::cout << "no se que esta
-    pasando" << std::endl;
-        track_list_view->track_model->get_item(st->get_selected())->playing =
-    "this shouldn't exist"; track_list_view->update();
-      }
+}
+void track_controller::previous() {
+  std::cout << "Previous track" << std::endl;
 
-    } else {
-      std::cout << "No File Selected" << std::endl;
-    }*/
-};
+if (playing_track_index - 1>=0){
+  
+
+  bool unselect_rest = true;
+  playing_track_index -= 1;
+  track_list_view->track_list_view->get_model()->select_item(
+      playing_track_index, unselect_rest);
+
+  std::string path_with_index = get_path_of_column(playing_track_index);
+  g_object_set(elements.source, "uri", path_with_index.c_str(), NULL);
+  gst_element_set_state(elements.pipeline, GST_STATE_NULL);
+  gst_element_set_state(elements.pipeline, GST_STATE_PLAYING);
+  update_playing_buttons();
+  playing_state_label();
+}else {
+  std::cout << "No previous track" << std::endl;
+}
+}
+void track_controller::next() {
+
+ if (playing_track_index +1 < column_path.size() ){
+
+ 
+  bool unselect_rest = true;
+  playing_track_index += 1;
+  track_list_view->track_list_view->get_model()->select_item(
+      playing_track_index, unselect_rest);
+
+  std::string path_with_index = get_path_of_column(playing_track_index);
+  g_object_set(elements.source, "uri", path_with_index.c_str(), NULL);
+  gst_element_set_state(elements.pipeline, GST_STATE_NULL);
+  gst_element_set_state(elements.pipeline, GST_STATE_PLAYING);
+  update_playing_buttons();
+  playing_state_label();
+}
+}
+
+;
