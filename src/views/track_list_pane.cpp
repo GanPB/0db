@@ -1,31 +1,43 @@
 #include "track_list_pane.hpp"
+#include "glibmm/refptr.h"
 #include "gst/gstclock.h"
 #include "gst/gstformat.h"
 #include "gst/gstmessage.h"
 #include "gst/gstobject.h"
 #include "gst/gstutils.h"
+#include "gtk/gtk.h"
+#include "gtkmm/enums.h"
+#include "gtkmm/numericsorter.h"
 #include "gtkmm/progressbar.h"
+#include "gtkmm/sortlistmodel.h"
 #include "iostream"
 #include "sigc++/functors/mem_fun.h"
 #include <format>
+#include <gtkmm/dropdown.h>
+#include <memory.h>
 #include <string>
-
 track_list_pane::track_list_pane(const Glib::RefPtr<Gtk::Builder> &builder) {
   track_list_view = builder->get_widget<Gtk::ColumnView>("track_list_view");
   // model of added tracks
   track_model = Gio::ListStore<track_item>::create();
-  //bool ordenable = false;
-  //track_list_view->set_reorderable(ordenable);
 
+  // bool ordenable = false;
+  // track_list_view->set_reorderable(ordenable);
   if (track_list_view) {
+    track_list_view->sort_by_column(
+        std::dynamic_pointer_cast<Gtk::ColumnViewColumn>(
+            track_list_view->get_columns()->get_object(1)),
+        Gtk::SortType::ASCENDING);
+    Glib::RefPtr<Gtk::SortListModel> sort_model =
+        Gtk::SortListModel::create(track_model, track_list_view->get_sorter());
     Glib::RefPtr<Gtk::SingleSelection> selection_model =
-        Gtk::SingleSelection::create(track_model);
+        Gtk::SingleSelection::create(sort_model);
     track_list_view->set_model(selection_model);
     update();
   }
+
   controller = std::make_shared<track_controller>(this);
   play_button = builder->get_widget<Gtk::Button>("play_button");
-  // playing_button = builder->get_widget<Gtk::Label>("play_button");
   play_button->signal_clicked().connect(
       sigc::mem_fun(*controller, &track_controller::play));
   stop_button = builder->get_widget<Gtk::Button>("stop_button");
@@ -37,6 +49,7 @@ track_list_pane::track_list_pane(const Glib::RefPtr<Gtk::Builder> &builder) {
   next_button = builder->get_widget<Gtk::Button>("next_track");
   next_button->signal_clicked().connect(
       sigc::mem_fun(*controller, &track_controller::next));
+  dropdown_button = builder->get_widget<Gtk::DropDown>("dropdown_button");
 
   slider = builder->get_widget<Gtk::Scale>("volume_slider");
   slider->set_range(0, 1);
@@ -61,9 +74,11 @@ bool track_list_pane::msg_timeout() {
   controller->msg = gst_bus_timed_pop_filtered(
       controller->bus, 0 * GST_MSECOND,
       GstMessageType(GST_MESSAGE_STATE_CHANGED | GST_MESSAGE_ERROR |
-                     GST_MESSAGE_EOS));
+                     GST_MESSAGE_EOS | GST_MESSAGE_BUFFERING |
+                     GST_MESSAGE_STREAMS_SELECTED | GST_MESSAGE_STREAM_START |
+                     GST_MESSAGE_DURATION_CHANGED));
   if (controller->msg != NULL) {
-    controller->handle_message(&controller->elements, controller->msg);
+    controller->handle_message(controller, controller->msg);
     // progress
   }
   return true;
@@ -72,13 +87,13 @@ bool track_list_pane::msg_timeout() {
 bool track_list_pane::progress_bar_pos_timeout() {
   gint64 current = 0;
 
-  gst_element_query_duration(controller->elements.pipeline, GST_FORMAT_TIME,
+  gst_element_query_duration(controller->elements.source, GST_FORMAT_TIME,
                              &controller->elements.duration);
-  gst_element_query_position(controller->elements.pipeline, GST_FORMAT_TIME,
+  gst_element_query_position(controller->elements.source, GST_FORMAT_TIME,
                              &current);
   // PROGRESS BAR POSITION
   if (controller->column_path.size() > 0) {
-    progress_bar->set_fraction(current);
+
     progress_bar->set_fraction(
         (float(current) / (float(controller->elements.duration))));
 

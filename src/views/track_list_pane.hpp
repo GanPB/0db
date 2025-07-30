@@ -1,5 +1,6 @@
 #pragma once
 
+#include "gtkmm/dropdown.h"
 #include "gtkmm/label.h"
 #include "gtkmm/progressbar.h"
 #include "sigc++/connection.h"
@@ -27,7 +28,7 @@ public:
   Gtk::Button *previous_button;
   Gtk::Button *next_button;
   Gtk::Label *playing_button;
-  
+  Gtk::DropDown *dropdown_button;
   void update();
 
 private:

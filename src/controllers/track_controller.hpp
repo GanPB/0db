@@ -1,5 +1,6 @@
 #pragma once
 #include "glib.h"
+#include "glibmm/random.h"
 #include "glibmm/refptr.h"
 #include "gst/gstbus.h"
 #include "gst/gstelement.h"
@@ -23,6 +24,7 @@ public:
   bool playing_state = false;
   bool paused_state = true;
   bool stopped_state = true;
+  bool unselect_rest;
 
   GstBus *bus;
   GstMessage *msg;
@@ -44,17 +46,25 @@ public:
   };
 
   player elements;
-  static void handle_message(player *data, GstMessage *msg);
+  static void handle_message(std::shared_ptr<track_controller> data, GstMessage *msg);
 
 private:
   track_list_pane *track_list_view;
   int playing_track_index = -1;
+  Glib::Rand random_number;
+  int random_index;
   static void pad_added_handler(GstElement *src, GstPad *pad, player *data);
   void update_playing_buttons();
-  void update_album_cover() {}  
+  void update_album_cover() {}
   void on_track_selected();
   void on_column_selected(guint pos);
+  void dropdown_menu();
+  void random_selection();
+  void loop_selection();
+  void previous_selection();
   std::string get_path_of_column(int index);
   void test(bool testi);
   void playing_state_label();
+  static void
+  end_of_stream_callback(GstElement *src, track_controller *controller, GstMessage *msg);
 };
