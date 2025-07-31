@@ -60,8 +60,8 @@ private:
   void on_column_selected(guint pos);
   void dropdown_menu();
   void random_selection();
-  void loop_selection();
-  void previous_selection();
+  void forward_loop_selection();
+  void previous_loop_selection();
   std::string get_path_of_column(int index);
   void test(bool testi);
   void playing_state_label();

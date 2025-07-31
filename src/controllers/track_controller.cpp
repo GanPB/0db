@@ -138,13 +138,16 @@ void track_controller::on_changed_volume() {
                nullptr);
 }
 void track_controller::update_playing_buttons() {
+  if (track_list_view->track_model->get_item(0)) {
   if (elements.playing) {
     track_list_view->play_button->set_label("⏸︎");
   } else
     track_list_view->play_button->set_label("▶");
   track_list_view->update();
 }
+}
 void track_controller::play() {
+  if (track_list_view->track_model->get_item(0)) {
   std::shared_ptr<Gtk::SingleSelection> ss =
       std::dynamic_pointer_cast<Gtk::SingleSelection>(
           track_list_view->track_list_view->get_model());
@@ -167,13 +170,16 @@ void track_controller::play() {
   update_playing_buttons();
   stopped_state = false;
 }
+}
 void track_controller::stop() {
+   if (track_list_view->track_model->get_item(0)) {
   gst_element_set_state(elements.source, GST_STATE_NULL);
   stopped_state = true;
   elements.playing = false;
   track_list_view->update();
   playing_state_label();
   update_playing_buttons();
+}
 }
 void track_controller::add_track(const std::string &path) {
   TagLib::FileRef file_add(path.c_str());
@@ -212,11 +218,9 @@ void track_controller::on_column_selected(guint pos) {
   playing_track_index = ss->get_selected();
   elements.playing = true;
   stopped_state = false;
-
   update_playing_buttons();
   playing_state_label();
 }
-
 void track_controller::playing_state_label() {
   std::shared_ptr<Gtk::SingleSelection> st =
       std::dynamic_pointer_cast<Gtk::SingleSelection>(
@@ -238,31 +242,24 @@ void track_controller::playing_state_label() {
   }
 }
 void track_controller::previous() {
-  if (playing_track_index - 1 >= 0) {
-    elements.playing = true;
-    stopped_state = false;
-    previous_selection();
-    random_selection();
-    gst_element_set_state(elements.source, GST_STATE_NULL);
-    gst_element_set_state(elements.source, GST_STATE_PLAYING);
-    update_playing_buttons();
-    playing_state_label();
-  } else {
-    std::cout << "No previous track" << std::endl;
-  }
+  if (track_list_view->track_model->get_item(0)) {
+  elements.playing = true;
+  stopped_state = false;
+  previous_loop_selection();
+  random_selection();
+  gst_element_set_state(elements.source, GST_STATE_NULL);
+  gst_element_set_state(elements.source, GST_STATE_PLAYING);
+  update_playing_buttons();
+  playing_state_label();
+}
 }
 void track_controller::next() {
-  if (playing_track_index + 1 <= column_path.size()) {
-    random_selection();
-    gst_element_set_state(elements.source, GST_STATE_NULL);
-    gst_element_set_state(elements.source, GST_STATE_PLAYING);
-    update_playing_buttons();
-    playing_state_label();
-  } else if (playing_track_index + 1 < column_path.size()) {
+  if (track_list_view->track_model->get_item(0)) {
+
     elements.playing = true;
     stopped_state = false;
+    forward_loop_selection();
     random_selection();
-    loop_selection();
     gst_element_set_state(elements.source, GST_STATE_NULL);
     gst_element_set_state(elements.source, GST_STATE_PLAYING);
     update_playing_buttons();
@@ -299,6 +296,7 @@ void track_controller::end_of_stream_callback(GstElement *src,
   }
 };
 void track_controller::random_selection() {
+
   random_index = playing_track_index;
   while (random_index == playing_track_index) {
     random_index = random_number.get_int_range(0, column_path.size());
@@ -311,24 +309,31 @@ void track_controller::random_selection() {
     g_object_set(elements.source, "uri", path_with_index.c_str(), NULL);
   }
 }
-void track_controller::loop_selection() {
-  if (track_list_view->dropdown_button->get_selected() == 0 ||
-      track_list_view->dropdown_button->get_selected() == 2) {
-    playing_track_index += 1;
+void track_controller::forward_loop_selection() {
+  if (playing_track_index - 1 >= 0 &&
+      playing_track_index + 1 < column_path.size()) {
+    if (track_list_view->dropdown_button->get_selected() == 0 ||
+        track_list_view->dropdown_button->get_selected() == 2) {
+      playing_track_index += 1;
 
-    track_list_view->track_list_view->get_model()->select_item(
-        playing_track_index, unselect_rest);
-    std::string path_with_index = get_path_of_column(playing_track_index);
-    g_object_set(elements.source, "uri", path_with_index.c_str(), NULL);
+      track_list_view->track_list_view->get_model()->select_item(
+          playing_track_index, unselect_rest);
+      std::string path_with_index = get_path_of_column(playing_track_index);
+      g_object_set(elements.source, "uri", path_with_index.c_str(), NULL);
+    }
   }
 }
-void track_controller::previous_selection() {
-  if (track_list_view->dropdown_button->get_selected() == 0 ||
-      track_list_view->dropdown_button->get_selected() == 2) {
-    playing_track_index -= 1;
-    track_list_view->track_list_view->get_model()->select_item(
-        playing_track_index, unselect_rest);
-    std::string path_with_index = get_path_of_column(playing_track_index);
-    g_object_set(elements.source, "uri", path_with_index.c_str(), NULL);
+void track_controller::previous_loop_selection() {
+  if (playing_track_index - 1 >= 0 &&
+      playing_track_index + 1 < column_path.size()) {
+
+    if (track_list_view->dropdown_button->get_selected() == 0 ||
+        track_list_view->dropdown_button->get_selected() == 2) {
+      playing_track_index -= 1;
+      track_list_view->track_list_view->get_model()->select_item(
+          playing_track_index, unselect_rest);
+      std::string path_with_index = get_path_of_column(playing_track_index);
+      g_object_set(elements.source, "uri", path_with_index.c_str(), NULL);
+    }
   }
 }

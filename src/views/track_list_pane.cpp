@@ -70,7 +70,7 @@ bool track_list_pane::msg_timeout() {
                      GST_MESSAGE_STREAMS_SELECTED | GST_MESSAGE_STREAM_START |
                      GST_MESSAGE_DURATION_CHANGED));
   if (controller->msg != NULL) {
-    controller->handle_message(&controller->elements, controller->msg);
+    controller->handle_message(controller, controller->msg);
   }
   return true;
 }
@@ -82,7 +82,7 @@ bool track_list_pane::progress_bar_pos_timeout() {
                              &current);
 
   if (controller->column_path.size()>0 ) {
-    progress_bar->set_fraction(current);
+   
     progress_bar->set_fraction(
         (float(current) / (float(controller->elements.duration))));
 
