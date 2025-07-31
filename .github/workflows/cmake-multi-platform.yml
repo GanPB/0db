@@ -35,19 +35,7 @@ jobs:
     - name: Set reusable strings
       id: strings
       shell: bash
-      run: |
-        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-        echo "VCPKG_INSTALLATION_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
-
-    - name: Cache vcpkg installed packages
-      uses: actions/cache@v3
-      with:
-        path: |
-          ${{ env.VCPKG_INSTALLATION_ROOT }}\installed
-          ${{ env.VCPKG_INSTALLATION_ROOT }}\buildtrees
-        key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}
-        restore-keys: |
-          vcpkg-${{ runner.os }}-
+      run: echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
     - name: Install dependencies on Ubuntu
       if: matrix.os == 'ubuntu-latest'
@@ -68,7 +56,7 @@ jobs:
           libtag1-dev \
           libsqlite3-dev
 
-    - name: Setup MSYS2
+    - name: Install dependencies on Windows (MSYS2/MINGW64)
       if: matrix.os == 'windows-latest'
       uses: msys2/setup-msys2@v2
       with:
@@ -91,6 +79,7 @@ jobs:
           mingw-w64-x86_64-gst-libav
           mingw-w64-x86_64-taglib
           mingw-w64-x86_64-sqlite3
+          mingw-w64-x86_64-nsis
         
     - name: Configure CMake on Ubuntu
       if: matrix.os == 'ubuntu-latest'
@@ -105,7 +94,7 @@ jobs:
       if: matrix.os == 'windows-latest'
       shell: msys2 {0}
       run: >
-        cmake -B build -DCMAKE_BUILD_TYPE=Release
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DWIN_DLL_PATH="/d/a/_temp/msys64/mingw64/bin"
 
     - name: Build on Ubuntu
       if: matrix.os == 'ubuntu-latest'
@@ -115,8 +104,9 @@ jobs:
       if: matrix.os == 'windows-latest'
       shell: msys2 {0}
       run: |
-        export ACLOCAL_PATH="/d/a/_temp/msys64/usr/share/aclocal"
         cmake --build build
+        cd build
+        cpack --config CPackConfig.cmake
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4

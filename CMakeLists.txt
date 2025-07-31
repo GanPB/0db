@@ -15,31 +15,6 @@ pkg_check_modules(GST
 )
 pkg_check_modules(TAG taglib REQUIRED)
 pkg_check_modules(SQLITE sqlite3 REQUIRED)
-pkg_check_modules(GTKMM gtkmm-4.0 REQUIRED)
-# Install 0db gstreamermm fork, current main branch is outdated
-# gstreamermm uses autotools as their build system
-set(GSTREAMERMM_PREFIX ${CMAKE_BINARY_DIR}/lib/gstreamermm)
-set(GSTREAMERMM_INSTALL_DIR ${GSTREAMERMM_PREFIX}/lib/install)
-
-if(WIN32)
-  set(MSYS_BASH "D:/a/_temp/msys64/usr/bin/bash.exe")
-  set(CONFIGURE_SCRIPT "NOCONFIGURE=1 ./autogen.sh && ./configure --prefix=${GSTREAMERMM_INSTALL_DIR} --enable-maintainer-mode")
-  set(GSTREAMERMM_CONFIGURE_CMD ${MSYS_BASH} -lc "${CONFIGURE_SCRIPT}")
-else()
-  set(GSTREAMERMM_CONFIGURE_CMD bash -c "NOCONFIGURE=1 ./autogen.sh && ./configure --prefix=${GSTREAMERMM_INSTALL_DIR} --enable-maintainer-mode")
-endif()
-
-ExternalProject_Add(gstreamermm_0db
-  GIT_REPOSITORY https://github.com/Mario1159/gstreamermm.git
-  GIT_TAG master
-  PREFIX ${GSTREAMERMM_PREFIX}
-  SOURCE_SUBDIR .
-  CONFIGURE_COMMAND ${GSTREAMERMM_CONFIGURE_CMD}
-  BUILD_COMMAND make
-  INSTALL_COMMAND make install
-  BUILD_IN_SOURCE TRUE
-  UPDATE_COMMAND ""
-)
 
 set(SOURCES
   src/main.cpp
@@ -65,37 +40,56 @@ set(UI_FILES
 
 add_executable(0db ${SOURCES})
 
-add_dependencies(0db gstreamermm_0db)
+find_package(Threads REQUIRED)
 
-target_include_directories(0db PRIVATE
-  ${GTKMM_INCLUDE_DIRS}
-  ${GST_INCLUDE_DIRS}
-  ${GSTREAMERMM_INSTALL_DIR}/include/gstreamermm-1.0
-  # for gstreamermmconfig.h
-  ${GSTREAMERMM_INSTALL_DIR}/lib/gstreamermm-1.0/include
-  ${TAG_INSTALL_DIR}
-  ${SQLITE_INCLUDE_DIRS}
-)
+if(WIN32)
+  set(VAR_INCLUDE_DIRS
+    ${GTKMM_STATIC_INCLUDE_DIRS}
+    ${GST_STATIC_INCLUDE_DIRS}
+    ${TAG_STATIC_INSTALL_DIR}
+    ${SQLITE_STATIC_INCLUDE_DIRS}
+  )
 
-target_link_directories(0db PRIVATE
-  ${GTKMM_LIBRARY_DIRS}
-  ${GST_LIBRARY_DIRS}
-  ${GSTREAMERMM_INSTALL_DIR}/lib
-  ${TAG_LIBRARY_DIRS}
-  ${SQLITE_LIBRARY_DIRS}
-)
+  set(VAR_LIBRARY_DIRS
+    ${GTKMM_STATIC_LIBRARY_DIRS}
+    ${GST_STATIC_LIBRARY_DIRS}
+    ${TAG_STATIC_LIBRARY_DIRS}
+    ${SQLITE_STATIC_LIBRARY_DIRS}
+  )
 
-target_link_libraries(0db PRIVATE
-  ${GTKMM_LIBRARIES}
-  gstreamermm-1.0
-  ${GST_LIBRARIES}
-  ${TAG_LIBRARIES}
-  ${SQLITE_LIBRARIES}
-)
+  set(VAR_LIBRARIES
+    ${GTKMM_STATIC_LIBRARIES}
+    ${GST_STATIC_LIBRARIES}
+    ${TAG_STATIC_LIBRARIES}
+    ${SQLITE_STATIC_LIBRARIES}
+  )
+else()
+  set(VAR_INCLUDE_DIRS
+    ${GTKMM_INCLUDE_DIRS}
+    ${GST_INCLUDE_DIRS}
+    ${TAG_INSTALL_DIR}
+    ${SQLITE_INCLUDE_DIRS}
+  )
 
-target_compile_options(0db PRIVATE
-  ${GTKMM_CFLAGS_OTHER}
-)
+  set(VAR_LIBRARY_DIRS
+    ${GTKMM_LIBRARY_DIRS}
+    ${GST_LIBRARY_DIRS}
+    ${TAG_LIBRARY_DIRS}
+    ${SQLITE_LIBRARY_DIRS}
+  )
+
+  set(VAR_LIBRARIES
+    ${GTKMM_LIBRARIES}
+    ${GST_LIBRARIES}
+    ${TAG_LIBRARIES}
+    ${SQLITE_LIBRARIES}
+  )
+endif()
+
+target_include_directories(0db PRIVATE ${VAR_INCLUDE_DIRS})
+target_link_directories(0db PRIVATE ${VAR_LIBRARY_DIRS})
+target_link_libraries(0db PRIVATE ${VAR_LIBRARIES} Threads::Threads)
+
 
 set(UI_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/ui)
 file(MAKE_DIRECTORY ${UI_BUILD_DIR})
@@ -111,3 +105,49 @@ foreach(ui_file IN LISTS UI_FILES)
 endforeach()
 
 install(FILES ${UI_FILES} DESTINATION share/0db/ui)
+install(TARGETS 0db RUNTIME DESTINATION bin)
+
+include(InstallRequiredSystemLibraries)
+
+set(CPACK_PACKAGE_NAME "0db")
+set(CPACK_PACKAGE_VENDOR "1159cl")
+set(CPACK_PACKAGE_CONTACT "mario@1159.cl")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "0db Audio Player")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "0db")
+set(CPACK_PACKAGE_EXECUTABLES "0db" "0db")
+
+set(CPACK_GENERATOR "NSIS")
+set(CPACK_NSIS_DISPLAY_NAME "0db Audio Player")
+set(CPACK_NSIS_PACKAGE_NAME "0db")
+set(CPACK_NSIS_CONTACT "mario@1159.cl")
+set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\0db.exe")
+
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
+
+if(WIN32 AND DEFINED WIN_DLL_PATH)
+  message(STATUS "Installing required DLLs from: ${WIN_DLL_PATH}")
+
+  set(REQUIRED_DLLS
+    libfreetype-6.dll
+    libgio-2.0-0.dll
+    libgiomm-2.68-1.dll
+    libgstbase-1.0-0.dll
+    libgstreamer-1.0-0.dll
+    libgtkmm-4.0-0.dll
+    libstdc++-6.dll
+    libtag-2.dll
+    zlib1.dll
+  )
+
+  foreach(dll_name IN LISTS REQUIRED_DLLS)
+    set(dll_path "${WIN_DLL_PATH}/${dll_name}")
+    if(EXISTS "${dll_path}")
+      install(FILES "${dll_path}" DESTINATION bin)
+    else()
+      message(WARNING "DLL not found: ${dll_path}")
+    endif()
+  endforeach()
+endif()
+
+include(CPack)
