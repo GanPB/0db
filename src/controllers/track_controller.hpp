@@ -24,7 +24,7 @@ public:
   bool playing_state = false;
   bool paused_state = true;
   bool stopped_state = true;
-  bool unselect_rest;
+  bool unselect_rest = true;
 
   GstBus *bus;
   GstMessage *msg;

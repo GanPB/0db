@@ -29,6 +29,7 @@ public:
   Gtk::Button *next_button;
   Gtk::Label *playing_button;
   Gtk::DropDown *dropdown_button;
+  
   void update();
 
 private:

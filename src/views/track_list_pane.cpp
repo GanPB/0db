@@ -18,11 +18,7 @@
 #include <string>
 track_list_pane::track_list_pane(const Glib::RefPtr<Gtk::Builder> &builder) {
   track_list_view = builder->get_widget<Gtk::ColumnView>("track_list_view");
-  // model of added tracks
   track_model = Gio::ListStore<track_item>::create();
-
-  // bool ordenable = false;
-  // track_list_view->set_reorderable(ordenable);
   if (track_list_view) {
     track_list_view->sort_by_column(
         std::dynamic_pointer_cast<Gtk::ColumnViewColumn>(
@@ -35,7 +31,6 @@ track_list_pane::track_list_pane(const Glib::RefPtr<Gtk::Builder> &builder) {
     track_list_view->set_model(selection_model);
     update();
   }
-
   controller = std::make_shared<track_controller>(this);
   play_button = builder->get_widget<Gtk::Button>("play_button");
   play_button->signal_clicked().connect(
@@ -54,7 +49,6 @@ track_list_pane::track_list_pane(const Glib::RefPtr<Gtk::Builder> &builder) {
   slider = builder->get_widget<Gtk::Scale>("volume_slider");
   slider->set_range(0, 1);
   slider->set_value(0.5);
-
   volume_label = builder->get_widget<Gtk::Label>("volume_label");
   progress_bar = builder->get_widget<Gtk::ProgressBar>("progress_bar");
   progress_label = builder->get_widget<Gtk::Label>("timestamp_label");
@@ -62,15 +56,12 @@ track_list_pane::track_list_pane(const Glib::RefPtr<Gtk::Builder> &builder) {
       sigc::mem_fun(*this, &track_list_pane::msg_timeout), 10);
   progress_bar_timeout = Glib::signal_timeout().connect(
       sigc::mem_fun(*this, &track_list_pane::progress_bar_pos_timeout), 500);
-
   slider->signal_value_changed().connect(sigc::mem_fun(
       *this, &track_list_pane::on_volume_changed_sync_volume_level_label));
-  // binding volume to src
   slider->signal_value_changed().connect(
       sigc::mem_fun(*controller, &track_controller::on_changed_volume));
 }
 bool track_list_pane::msg_timeout() {
-
   controller->msg = gst_bus_timed_pop_filtered(
       controller->bus, 0 * GST_MSECOND,
       GstMessageType(GST_MESSAGE_STATE_CHANGED | GST_MESSAGE_ERROR |
@@ -79,19 +70,15 @@ bool track_list_pane::msg_timeout() {
                      GST_MESSAGE_DURATION_CHANGED));
   if (controller->msg != NULL) {
     controller->handle_message(controller, controller->msg);
-    // progress
   }
   return true;
 }
-
 bool track_list_pane::progress_bar_pos_timeout() {
   gint64 current = 0;
-
   gst_element_query_duration(controller->elements.source, GST_FORMAT_TIME,
                              &controller->elements.duration);
   gst_element_query_position(controller->elements.source, GST_FORMAT_TIME,
                              &current);
-  // PROGRESS BAR POSITION
   if (controller->column_path.size() > 0) {
 
     progress_bar->set_fraction(
@@ -103,39 +90,25 @@ bool track_list_pane::progress_bar_pos_timeout() {
   } else {
     std::cout << "No File Selected For Progress" << std::endl;
   }
-  // TIME FORMAT MINUTES AND SECONDS
-  // position
   std::string minutos =
       std::format("{:02}", ((int)(current / GST_SECOND / 60)));
 
   std::string segundos =
       std::format("{:02}", ((int)(current / GST_SECOND % 60)));
-  // duration
   std::string duration_mins = std::format(
       "{:02}", ((int)(controller->elements.duration / GST_SECOND / 60)));
   std::string duration_secs = std::format(
       "{:02}", ((int)(controller->elements.duration / GST_SECOND % 60)));
-  // PROGRESS BAR LABEL
   progress_label->set_label(minutos + ":" + segundos + " - " + duration_mins +
                             ":" + duration_secs);
   return true;
 }
-
 void track_list_pane::on_volume_changed_sync_volume_level_label() {
-  // g_object_set(track_list_view->controller->elements.volume, "volume",
-  //            slider->get_value(), NULL);
-  // VOLUME LABEL
   std::string porcen =
       "🔊 " + std::to_string((int)(slider->get_value() * 100)) + "%";
   volume_label->set_label(porcen);
 }
-
 void track_list_pane::update() {
-
-  // This can be refactored with a for loop, but due to the amount of lambdas
-  // and templates arguments it won't be trivial to make something clean and
-  // maintainable.
-
   Glib::RefPtr<Gtk::SignalListItemFactory> playing_factory =
       Gtk::SignalListItemFactory::create();
   playing_factory->signal_setup().connect(
@@ -227,7 +200,6 @@ void track_list_pane::update() {
           track_list_view->get_columns()->get_object(3));
   if (col3)
     col3->set_factory(album_factory);
-
   Glib::RefPtr<Gtk::SignalListItemFactory> name_factory =
       Gtk::SignalListItemFactory::create();
   name_factory->signal_setup().connect(
@@ -250,7 +222,6 @@ void track_list_pane::update() {
           track_list_view->get_columns()->get_object(4));
   if (col4)
     col4->set_factory(name_factory);
-
   Glib::RefPtr<Gtk::SignalListItemFactory> duration_factory =
       Gtk::SignalListItemFactory::create();
   duration_factory->signal_setup().connect(
