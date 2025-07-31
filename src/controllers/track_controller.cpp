@@ -1,24 +1,15 @@
 #include "track_controller.hpp"
-#include "file_controller.hpp"
 #include "glib-object.h"
 #include "glib.h"
-#include "gst/gstbin.h"
-#include "gst/gstbus.h"
-#include "gst/gstclock.h"
 #include "gst/gstelement.h"
 #include "gst/gstelementfactory.h"
-#include "gst/gstenumtypes.h"
-#include "gst/gstformat.h"
 #include "gst/gstmessage.h"
 #include "gst/gstpad.h"
 #include "gst/gstpipeline.h"
-#include "gst/gstsegment.h"
 #include "gst/gststructure.h"
 #include "gst/gstutils.h"
-#include "gst/gstvalue.h"
 #include "sigc++/functors/mem_fun.h"
 
-#include <concepts>
 #include <format>
 #include <glibmm/random.h>
 #include <iostream>
@@ -27,8 +18,10 @@
 #include <taglib/audioproperties.h>
 #include <taglib/fileref.h>
 #include <vector>
-track_controller::track_controller(track_list_pane *track_list_view) {
-  this->track_list_view = track_list_view;
+
+track_controller::track_controller(track_list_pane *track_list_view)
+    : track_list_view(track_list_view) {
+
   elements.playing = false;
   elements.terminate = false;
   elements.seek_enabled = false;
@@ -156,7 +149,6 @@ void track_controller::play() {
       std::dynamic_pointer_cast<Gtk::SingleSelection>(
           track_list_view->track_list_view->get_model());
   if (ss->get_selected() != playing_track_index) {
-    std::cout << "asdasdasdasd" << std::endl;
     playing_track_index = ss->get_selected();
     std::string path_with_index = get_path_of_column(ss->get_selected());
     g_object_set(elements.source, "uri", path_with_index.c_str(), NULL);
@@ -170,6 +162,7 @@ void track_controller::play() {
     elements.playing = false;
     gst_element_set_state(elements.source, GST_STATE_PAUSED);
   }
+
   playing_state_label();
   update_playing_buttons();
   stopped_state = false;
@@ -184,6 +177,8 @@ void track_controller::stop() {
 }
 void track_controller::add_track(const std::string &path) {
   TagLib::FileRef file_add(path.c_str());
+
+  // Fix to 8bit for a better conversion that allows UTF-8 characters
   Glib::ustring artist = file_add.tag()->artist().to8Bit();
   Glib::ustring song_name = file_add.tag()->title().to8Bit();
   Glib::ustring album = file_add.tag()->album().to8Bit();
@@ -194,6 +189,8 @@ void track_controller::add_track(const std::string &path) {
       "{:02}", (file_add.file()->audioProperties()->lengthInSeconds() / 60));
   std::string duration_secs = std::format(
       "{:02}", (file_add.file()->audioProperties()->lengthInSeconds() % 60));
+
+  // Setting the info in the column view
   track_list_view->track_model->append(
       track_item::create("", track_id, artist, song_name, album,
                          duration_mins + ":" + duration_secs));
@@ -215,9 +212,11 @@ void track_controller::on_column_selected(guint pos) {
   playing_track_index = ss->get_selected();
   elements.playing = true;
   stopped_state = false;
+
   update_playing_buttons();
   playing_state_label();
 }
+
 void track_controller::playing_state_label() {
   std::shared_ptr<Gtk::SingleSelection> st =
       std::dynamic_pointer_cast<Gtk::SingleSelection>(

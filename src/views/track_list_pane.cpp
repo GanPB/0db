@@ -3,7 +3,6 @@
 #include "gst/gstclock.h"
 #include "gst/gstformat.h"
 #include "gst/gstmessage.h"
-#include "gst/gstobject.h"
 #include "gst/gstutils.h"
 #include "gtk/gtk.h"
 #include "gtkmm/enums.h"
@@ -52,6 +51,7 @@ track_list_pane::track_list_pane(const Glib::RefPtr<Gtk::Builder> &builder) {
   volume_label = builder->get_widget<Gtk::Label>("volume_label");
   progress_bar = builder->get_widget<Gtk::ProgressBar>("progress_bar");
   progress_label = builder->get_widget<Gtk::Label>("timestamp_label");
+
   messages_timeout = Glib::signal_timeout().connect(
       sigc::mem_fun(*this, &track_list_pane::msg_timeout), 10);
   progress_bar_timeout = Glib::signal_timeout().connect(
@@ -62,6 +62,7 @@ track_list_pane::track_list_pane(const Glib::RefPtr<Gtk::Builder> &builder) {
       sigc::mem_fun(*controller, &track_controller::on_changed_volume));
 }
 bool track_list_pane::msg_timeout() {
+  // Update progress bar
   controller->msg = gst_bus_timed_pop_filtered(
       controller->bus, 0 * GST_MSECOND,
       GstMessageType(GST_MESSAGE_STATE_CHANGED | GST_MESSAGE_ERROR |
@@ -69,7 +70,7 @@ bool track_list_pane::msg_timeout() {
                      GST_MESSAGE_STREAMS_SELECTED | GST_MESSAGE_STREAM_START |
                      GST_MESSAGE_DURATION_CHANGED));
   if (controller->msg != NULL) {
-    controller->handle_message(controller, controller->msg);
+    controller->handle_message(&controller->elements, controller->msg);
   }
   return true;
 }
@@ -79,34 +80,33 @@ bool track_list_pane::progress_bar_pos_timeout() {
                              &controller->elements.duration);
   gst_element_query_position(controller->elements.source, GST_FORMAT_TIME,
                              &current);
-  if (controller->column_path.size() > 0) {
 
+  if (controller->column_path.size()>0 ) {
+    progress_bar->set_fraction(current);
     progress_bar->set_fraction(
         (float(current) / (float(controller->elements.duration))));
 
     if (controller->stopped_state) {
       progress_bar->set_fraction(0);
     }
-  } else {
-    std::cout << "No File Selected For Progress" << std::endl;
   }
-  std::string minutos =
+  std::string current_minutes =
       std::format("{:02}", ((int)(current / GST_SECOND / 60)));
 
-  std::string segundos =
+  std::string current_seconds =
       std::format("{:02}", ((int)(current / GST_SECOND % 60)));
-  std::string duration_mins = std::format(
+  std::string track_minutes = std::format(
       "{:02}", ((int)(controller->elements.duration / GST_SECOND / 60)));
-  std::string duration_secs = std::format(
+  std::string track_seconds = std::format(
       "{:02}", ((int)(controller->elements.duration / GST_SECOND % 60)));
-  progress_label->set_label(minutos + ":" + segundos + " - " + duration_mins +
-                            ":" + duration_secs);
+  progress_label->set_label(current_minutes + ":" + current_seconds + " - " + track_minutes +
+                            ":" + track_seconds);
   return true;
 }
 void track_list_pane::on_volume_changed_sync_volume_level_label() {
-  std::string porcen =
+  std::string percentage =
       "🔊 " + std::to_string((int)(slider->get_value() * 100)) + "%";
-  volume_label->set_label(porcen);
+  volume_label->set_label(percentage);
 }
 void track_list_pane::update() {
   Glib::RefPtr<Gtk::SignalListItemFactory> playing_factory =
