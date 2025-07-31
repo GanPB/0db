@@ -37,6 +37,17 @@ jobs:
       shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+        echo "VCPKG_INSTALLATION_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
+
+    - name: Cache vcpkg installed packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ env.VCPKG_INSTALLATION_ROOT }}\installed
+          ${{ env.VCPKG_INSTALLATION_ROOT }}\buildtrees
+        key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}
+        restore-keys: |
+          vcpkg-${{ runner.os }}-
 
     - name: Install dependencies on Ubuntu
       if: matrix.os == 'ubuntu-latest'
@@ -57,16 +68,30 @@ jobs:
           libtag1-dev \
           libsqlite3-dev
 
-    - name: Install dependencies on Windows
+    - name: Setup MSYS2
       if: matrix.os == 'windows-latest'
-      shell: pwsh
-      run: |
-        vcpkg install gtkmm
-        vcpkg install gstreamer
-        vcpkg install taglib
-        vcpkg install sqlite
-        choco install pkgconfiglite --yes
-
+      uses: msys2/setup-msys2@v2
+      with:
+        update: true
+        install: >-
+          git
+          mm-common
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-make
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-meson
+          mingw-w64-x86_64-autotools
+          mingw-w64-x86_64-libtool
+          mingw-w64-x86_64-pkg-config
+          mingw-w64-x86_64-gtkmm-4.0
+          mingw-w64-x86_64-gstreamer
+          mingw-w64-x86_64-gst-plugins-base
+          mingw-w64-x86_64-gst-plugins-good
+          mingw-w64-x86_64-gst-plugin-gtk
+          mingw-w64-x86_64-gst-libav
+          mingw-w64-x86_64-taglib
+          mingw-w64-x86_64-sqlite3
+        
     - name: Configure CMake on Ubuntu
       if: matrix.os == 'ubuntu-latest'
       run: >
@@ -78,16 +103,20 @@ jobs:
 
     - name: Configure CMake on Windows
       if: matrix.os == 'windows-latest'
+      shell: msys2 {0}
       run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_INSTALLATION_ROOT }}\scripts\buildsystems\vcpkg.cmake
-        -S ${{ github.workspace }}
+        cmake -B build -DCMAKE_BUILD_TYPE=Release
 
-    - name: Build
+    - name: Build on Ubuntu
+      if: matrix.os == 'ubuntu-latest'
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+
+    - name: Build on Windows
+      if: matrix.os == 'windows-latest'
+      shell: msys2 {0}
+      run: |
+        export ACLOCAL_PATH="/d/a/_temp/msys64/usr/share/aclocal"
+        cmake --build build
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
