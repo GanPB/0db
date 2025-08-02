@@ -18,6 +18,9 @@
 #include <taglib/audioproperties.h>
 #include <taglib/fileref.h>
 #include <vector>
+#include <string>
+#include <codecvt>
+#include <windows.h>
 
 track_controller::track_controller(track_list_pane *track_list_view)
     : track_list_view(track_list_view) {
@@ -181,8 +184,34 @@ void track_controller::stop() {
   update_playing_buttons();
 }
 }
+std::u16string utf8_to_utf16(const std::string& utf8str) {
+    std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
+    return convert.from_bytes(utf8str);
+}
+const wchar_t* ConvertUtf8ToUtf16(const std::string& utf8Path, std::vector<wchar_t>& buffer)
+{
+    int requiredSize = MultiByteToWideChar(CP_UTF8, 0, utf8Path.c_str(), -1, nullptr, 0);
+ buffer.resize(requiredSize);
+    int convertedSize = MultiByteToWideChar(CP_UTF8, 0, utf8Path.c_str(), -1, buffer.data(), requiredSize);
+    return buffer.data();
+
+}
 void track_controller::add_track(const std::string &path) {
-  TagLib::FileRef file_add(path.c_str());
+
+std::vector<wchar_t> utf16Buffer;
+    const wchar_t* utf16Path = ConvertUtf8ToUtf16(path, utf16Buffer);
+ 
+int size_needed = MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, nullptr, 0);
+std::wstring utf16(size_needed, 0);
+MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, &utf16[0], size_needed);
+
+// Get raw pointer (const wchar_t) or reinterpret_cast to const char if required
+const wchar_t* wide_cstr = utf16.c_str();
+const char* utf16_as_char = reinterpret_cast<const char*>(wide_cstr);
+  std::u16string path_utf16 = utf8_to_utf16(path);
+  const char* data = reinterpret_cast<const char*>(path_utf16.data());
+
+  TagLib::FileRef file_add(utf16Path);
 
   // Fix to 8bit for a better conversion that allows UTF-8 characters
   Glib::ustring artist = file_add.tag()->artist().to8Bit();
@@ -310,8 +339,7 @@ void track_controller::random_selection() {
   }
 }
 void track_controller::forward_loop_selection() {
-  if (playing_track_index - 1 >= 0 &&
-      playing_track_index + 1 < column_path.size()) {
+  if (playing_track_index + 1 < column_path.size()) {
     if (track_list_view->dropdown_button->get_selected() == 0 ||
         track_list_view->dropdown_button->get_selected() == 2) {
       playing_track_index += 1;

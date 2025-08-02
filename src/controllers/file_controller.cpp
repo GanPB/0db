@@ -29,27 +29,31 @@ void file_controller::on_file_selected(
 void file_controller::on_folder_selected(
     const Glib::RefPtr<Gio::AsyncResult> &result_folder,
     const Glib::RefPtr<Gtk::FileDialog> &folder) {
-
-  Glib::RefPtr<Gio::File> file = folder->select_folder_finish(result_folder);
-  directory_path = file->get_path();
+      std::vector <Glib::RefPtr<Gio::File>> folders_multiple = folder->select_multiple_folders_finish(result_folder);
+      
+ // Glib::RefPtr<Gio::File> file = folder->select_folder_finish(result_folder);
+  for (int i = 0; i < folders_multiple.size(); i++){
+    directory_path = folders_multiple[i]->get_path();
 
   // Get all the audio files from the directory selected
-  Glib::RefPtr<Gio::FileEnumerator> files_enum = file->enumerate_children();
+  Glib::RefPtr<Gio::FileEnumerator> files_enum = folders_multiple[i]->enumerate_children();
   Glib::RefPtr<Gio::FileInfo> file_i = files_enum->next_file();
-  Glib::RefPtr<Gio::File> file_name = file->get_child(file_i->get_name());
+  Glib::RefPtr<Gio::File> file_name = folders_multiple[i]->get_child(file_i->get_name());
 
   while (file_i != nullptr) {
-    file_name = file->get_child(file_i->get_name());
+    file_name = folders_multiple[i]->get_child(file_i->get_name());
     // If file[i] has MIME type audio/*
-    if (file_i->get_content_type().find("audio/") != std::string::npos) {
+    if (file_i->get_content_type().find("audio/") != std::string::npos || file_i->get_content_type().find("mp3") != std::string::npos|| file_i->get_content_type().find("flac") != std::string::npos) {
       // Adds the track to the track list
       track_control->column_path.push_back(file_name->get_uri());
       track_control->add_track(file_name->get_path());
       std::cout << file_i->get_content_type() << std::endl;
-    }
+    }else {std::cout << file_i->get_content_type() <<std::endl;
+         }
     file_i = files_enum->next_file();
   }
   files_enum->close();
+}
 }
 
 void file_controller::on_open_file() {
@@ -72,7 +76,7 @@ void file_controller::on_open_folder() {
   Glib::RefPtr<Gtk::FileDialog> file_dialog_folder = Gtk::FileDialog::create();
 
   file_dialog_folder->set_title("Select folder");
-  file_dialog_folder->select_folder(
+  file_dialog_folder->select_multiple_folders(
       sigc::bind(sigc::mem_fun(*this, &file_controller::on_folder_selected),
                  file_dialog_folder));
 }

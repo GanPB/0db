@@ -38,7 +38,7 @@ set(UI_FILES
   ui/main_window.ui
 )
 
-add_executable(0db ${SOURCES})
+add_executable(0db ${SOURCES} 0db.manifest)
 
 find_package(Threads REQUIRED)
 
@@ -151,3 +151,4 @@ if(WIN32 AND DEFINED WIN_DLL_PATH)
 endif()
 
 include(CPack)
+
